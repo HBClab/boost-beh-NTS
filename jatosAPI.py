@@ -10,12 +10,20 @@ import subprocess
 
 # jap_5ThOJ14yf7z1EPEUpAoZYMWoETZcmJk305719
 
-def get_met():
-    tease = os.getenv['TEASE']
+def parse_cmd():
+    #parse command line for TEASE var
+    import argparse
+    parser = argparse.ArgumentParser(description='API File to Pull Subject Data from Jatos')
+    parser.add_argument('-t', type=str, help='TEASE')
+
+
+
+def get_met(tease):
+    
 
     proxies = {
-    'http': f'http:zjgilliam:{tease}//proxy.divms.uiowa.edu:8888',
-    'https': f'https://zjgilliam:{tease}proxy.divms.uiowa.edu:8888',
+    'http': f'http:zjgilliam:{tease}@proxy.divms.uiowa.edu:8888',
+    'https': f'https://zjgilliam:{tease}@proxy.divms.uiowa.edu:8888',
     }
 
 
@@ -61,12 +69,13 @@ def get_met():
     
     return study_result_ids
 
-def get_data(study_result_ids):
-    tease = os.getenv['TEASE']
+def get_data(study_result_ids, tease):
+
+    
 
     proxies = {
-    'http': f'http:zjgilliam:{tease}//proxy.divms.uiowa.edu:8888',
-    'https': f'https://zjgilliam:{tease}proxy.divms.uiowa.edu:8888',
+    'http': f'http:zjgilliam:{tease}@proxy.divms.uiowa.edu:8888',
+    'https': f'https://zjgilliam:{tease}@proxy.divms.uiowa.edu:8888',
     }
 
     
@@ -225,8 +234,10 @@ def push():
 
 
 def main():
-    study_result_ids = get_met()
-    get_data(study_result_ids)
+    args = parse_cmd()
+    tease = args.t
+    study_result_ids = get_met(tease)
+    get_data(study_result_ids, tease)
     convert_beh()
     txt_files = []
     for root, dirs, files in os.walk('./data/raw'):
