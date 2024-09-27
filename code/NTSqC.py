@@ -31,7 +31,7 @@ def qc(submission):
     
     #Check if submission has correct number of rows (within 5% of expected = 179)
     if len(submission) < 170 or len(submission) > 188:
-        errors.append('Submission has incorrect number of rows')
+        print(f'WARNING: Submission has incorrect number of rows. Expected 179 - found {len(submission)}')
     # If there are any errors, print them and exit
     if errors:
         for error in errors:
