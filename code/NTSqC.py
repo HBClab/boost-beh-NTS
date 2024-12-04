@@ -24,11 +24,11 @@ def qc(submission):
     # Check if submission is a DataFrame
     if not isinstance(submission, pd.DataFrame):
         errors.append('Submission is not a DataFrame. Could not run QC')
-    
+
     # Check if submission is empty
     if len(submission) == 0:
-        errors.append('Submission is empty')
-    
+        errors.append('Submission is empty')     
+
     #Check if submission has correct number of rows (within 5% of expected = 179)
     if len(submission) < 170 or len(submission) > 188:
         print(f'WARNING: Submission has incorrect number of rows. Expected 179 - found {len(submission)}')
@@ -39,13 +39,14 @@ def qc(submission):
         sys.exit(1)
 
     print("All QC checks passed.")
-        
-    
+
+
 def plots(submission, output, sub):
     import pandas as pd
     import numpy as np
     import matplotlib.pyplot as plt
-    import seaborn as sns
+    from matplotlib import patches as mpatches
+    import seaborn as sb
     from math import pi
 
     df = pd.read_csv(submission)
@@ -53,48 +54,66 @@ def plots(submission, output, sub):
 
     percentages = test.groupby('block_cond')['response'].apply(lambda x: (x != 'None').mean())
 
-    # Plotting the circular bar graph
-    def plot_circular_bar_graph(percentages, name, output_name):
-        startangle = 90
-        colors = ['#4393E5', '#43BAE5', '#7AE6EA', '#E5A443']
-        
-        # Convert data to fit the polar axis
-        ys = [i *1.1 for i in range(len(percentages))]   # One bar for each block
-        left = (startangle * pi * 2) / 360  # This is to control where the bar starts
+    # Map the 'correct' column to more descriptive labels
+    test['correct_label'] = test['correct'].map({0: 'Incorrect', 1: 'Correct'})
 
-        # Figure and polar axis
-        fig, ax = plt.subplots(figsize=(6, 6))
-        ax = plt.subplot(projection='polar')
+    plt.figure(figsize=(10, 6))
 
-        # Plot bars and points at the end to make them round
-        for i, (block, percentage) in enumerate(percentages.items()):
-            ax.barh(ys[i], percentage * 2 * pi, left=left, height=0.5, color=colors[i % len(colors)], label=block)
-            ax.text(percentage + left + 0.02, ys[i], f'{percentage:.0%}', va='center', ha='left', color='black', fontsize=12)
+    # Plot the scatterplot with hue to differentiate correct and incorrect trials
+    sb.stripplot(
+        x='block_cond',
+        y='response_time',
+        data=test,
+        hue='correct_label',
+        alpha=0.5,
+        dodge=True,
+        palette={'Correct': 'green', 'Incorrect': 'red'}
+    )
 
-        plt.ylim(-1, len(percentages))
+    # Overlay the boxplot without the hue
+    sb.boxplot(
+        x='block_cond',
+        y='response_time',
+        data=test,
+        whis=np.inf,
+        linewidth=0.5,
+        color='gray'
+    )
 
-        # Custom legend
-        ax.legend(loc='center', bbox_to_anchor=(0.5, -0.1), frameon=True) 
+    # Calculate the mean response time for each block_c
+    means = test.groupby('block_cond')['response_time'].mean()
 
-        # Clear ticks and spines
-        plt.xticks([])
-        plt.yticks([])
-        ax.spines.clear()
-        plt.title(name, fontsize=15, pad=20, color="black")
+    # Calculate the mean response time for blocks 'A' and 'B'
+    mean_A_B = means[['A', 'B']].mean()
 
-        plt.savefig(os.path.join(output, f'{sub}_'+output_name+'.png'))
-        plt.close()
+    # Calculate the Mixing Cost for block 'C'
+    mixing_cost = means['C'] - mean_A_B
 
-    plot_circular_bar_graph(percentages, 'Response Rate by Conditon', 'response_rate')
-    acc_perc = test.groupby('block_cond')['correct'].mean()
-    plot_circular_bar_graph(acc_perc, 'Accuracy Rate by Condition', 'accuracy_rate') 
+    # Create labels for the legend with the mean values and Mixing Cost
+    labels = [f'block_c {cond}: Mean = {mean:.2f}' for cond, mean in means.items()]
+    labels.append(f'Mixing Cost = {mixing_cost:.2f}')
 
-    sns.boxplot(x='block_cond', y='response_time', hue='correct', data=test, showfliers=False)
-    sns.stripplot(x='block_cond', y='response_time', hue='correct', data=test, color='black', alpha=0.5)
-    plt.title('Response time per block')
-    plt.xlabel('Block')
-    plt.ylabel('Response time')
-    plt.savefig(os.path.join(output, f'{sub}_rt.png'), bbox_inches='tight')
+    # Create dummy handles for the legend entries
+    handles = [mpatches.Patch(color='white') for _ in labels]
+
+    # Add the legend outside the plot area
+    plt.legend(handles=handles, labels=labels, title='Means and Mixing Cost by block_c',
+            bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0., frameon=False)
+
+    plt.title('Response Time by block_c')
+
+        # Adjust the layout to accommodate the legend
+    plt.tight_layout()
+    plt.savefig(os.path.join(output, f'{sub}_response_time.png'))
+    plt.close()
+
+    # Plot accuracy as bar chart by condition, counts of correct and incorrect trials
+    plt.figure()
+    sb.barplot(x='block_cond', y='correct', data=test)
+    plt.title('Accuracy by block_cond')
+    plt.savefig(os.path.join(output, f'{sub}_acc.png'))
+    plt.close()
+
 
 
 def main():

@@ -29,7 +29,6 @@ jobs:
       - name: Get Changed CSV Files
         run: |
           #!/bin/bash
-         
 
 
           # Get the list of CSV files changed in the last 24 hours
